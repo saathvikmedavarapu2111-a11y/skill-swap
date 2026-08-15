@@ -34,7 +34,8 @@ export function createApp(): Express {
         if (!origin) return callback(null, true);
         if (
           allowedOrigins.includes(origin) ||
-          process.env.NODE_ENV === "development"
+          process.env.NODE_ENV === "development" ||
+          origin.endsWith(".vercel.app")
         ) {
           return callback(null, true);
         }
@@ -52,6 +53,7 @@ export function createApp(): Express {
 
   // API Routes
   app.use("/api", apiRouter);
+  app.use("/", apiRouter);
 
   // 404 Route Handler
   app.use((req: Request, res: Response) => {
@@ -63,3 +65,6 @@ export function createApp(): Express {
 
   return app;
 }
+
+export const app = createApp();
+export default app;
