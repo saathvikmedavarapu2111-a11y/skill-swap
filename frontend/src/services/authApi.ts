@@ -1,6 +1,45 @@
 import { User } from "@/types";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+/**
+ * Returns the sanitized API Base URL without trailing slashes.
+ * Falls back to "/api" in local development / proxy mode if not configured.
+ */
+export function getNormalizedBaseUrl(): string {
+  const rawEnvUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  if (!rawEnvUrl) {
+    return "/api";
+  }
+
+  // Remove wrapping quotes if present
+  const envUrl = rawEnvUrl.replace(/^["']|["']$/g, "").trim();
+  if (!envUrl) {
+    return "/api";
+  }
+
+  // Strip all trailing slashes
+  return envUrl.replace(/\/+$/, "");
+}
+
+/**
+ * Constructs a normalized, single-slashed API URL for any endpoint path.
+ * Guarantees exactly one slash between base URL and endpoint path,
+ * preventing double slashes (e.g. "https://domain.com//auth/login").
+ */
+export function buildApiUrl(endpoint: string = ""): string {
+  const base = getNormalizedBaseUrl();
+  const cleanEndpoint = endpoint.trim().replace(/^\/+/, "");
+
+  if (!cleanEndpoint) {
+    return base;
+  }
+
+  if (!base) {
+    return `/${cleanEndpoint}`;
+  }
+
+  return `${base}/${cleanEndpoint}`;
+}
+
 const TOKEN_KEY = "skillswap_auth_token_v1";
 
 export interface AuthResponse {
@@ -41,6 +80,14 @@ export interface RegisterPayload {
 }
 
 export const authApi = {
+  getBaseUrl(): string {
+    return getNormalizedBaseUrl();
+  },
+
+  buildUrl(endpoint: string): string {
+    return buildApiUrl(endpoint);
+  },
+
   getToken(): string | null {
     try {
       return localStorage.getItem(TOKEN_KEY);
@@ -69,7 +116,8 @@ export const authApi = {
    * Log in with email and password
    */
   async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const url = buildApiUrl("/auth/login");
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -91,7 +139,8 @@ export const authApi = {
    * Register a new student account
    */
   async register(payload: RegisterPayload): Promise<{ user: User; token: string }> {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const url = buildApiUrl("/auth/register");
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -119,7 +168,8 @@ export const authApi = {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      const url = buildApiUrl("/auth/me");
+      const response = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -140,7 +190,7 @@ export const authApi = {
 
       return data.data.user;
     } catch (error) {
-      console.warn("Failed to reach auth backend /api/auth/me", error);
+      console.warn("Failed to reach auth backend", error);
       return null;
     }
   },
@@ -152,7 +202,8 @@ export const authApi = {
     const token = this.getToken();
     try {
       if (token) {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
+        const url = buildApiUrl("/auth/logout");
+        await fetch(url, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -172,7 +223,8 @@ export const authApi = {
    */
   async checkHealth(): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE_URL}/health`);
+      const url = buildApiUrl("/health");
+      const res = await fetch(url);
       return res.ok;
     } catch {
       return false;
