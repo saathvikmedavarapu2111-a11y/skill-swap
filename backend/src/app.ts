@@ -13,8 +13,9 @@ export function createApp(): Express {
   const app = express();
 
   // Helmet for security headers
+  const helmetMiddleware = typeof helmet === "function" ? helmet : ((helmet as any).default ?? helmet);
   app.use(
-    helmet({
+    helmetMiddleware({
       crossOriginResourcePolicy: { policy: "cross-origin" },
     })
   );
